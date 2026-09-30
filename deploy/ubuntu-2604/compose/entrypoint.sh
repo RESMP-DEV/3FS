@@ -20,9 +20,11 @@ if [ -n "$(ls -A "$DATA" 2>/dev/null)" ] && [ "$(printenv 3FS_KEEP_DATA)" != "1"
 fi
 
 # rxe0 must exist on the host before we start (setup-rxe.sh); we share the host
-# network and kernel RDMA stack through network_mode: host + privileged.
-if ! rdma link show rxe0 >/dev/null 2>&1; then
-  echo "ERROR: host rxe0 RDMA link not found. Run deploy/ubuntu-2604/setup-rxe.sh first." >&2
+# network, sysfs, and /dev/infiniband through network_mode: host + privileged.
+# Check sysfs, not `rdma link show rxe0`: jammy's iproute2 5.15 rejects the bare
+# device name ("Wrong device name"), unlike the host's newer iproute2.
+if [ ! -d /sys/class/infiniband/rxe0 ]; then
+  echo "ERROR: host rxe0 RDMA link not found (/sys/class/infiniband/rxe0 missing). Run deploy/ubuntu-2604/setup-rxe.sh first." >&2
   exit 1
 fi
 
