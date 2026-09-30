@@ -16,8 +16,37 @@ Ubuntu 26.04.1 LTS.
 | `limits-99-3fs.conf` | `memlock unlimited` + `nofile 1048576` — without these, `storage_main` dies with `reg_mr errno 12` / `TooManyOpenFiles`. Install to `/etc/security/limits.d/`; applies to NEW login sessions only. |
 | `run-single-node.sh` | Wrapper around `tests/fuse/run.sh` with the compat `LD_LIBRARY_PATH` and limit checks. |
 | `bench-3fs.sh` | fio benchmark, pre-training-shaped (parallel shard streaming, direct I/O), raw disk vs 3FS mount. |
+| `compose/` | Docker Compose portability bundle: cached builder + single-node runtime container. See below. |
+
+## Docker Compose bundle (`compose/`)
+
+Three profiles over the unmodified upstream dev image. The builder and runtime
+images extend it with ccache + a static sccache binary (jammy has no package),
+so C++ and Rust builds are warm across containers via named volumes.
+
+```bash
+cd compose
+cp .env.example .env                     # adjust REPO_DIR/DATA_DIR if needed
+sudo docker compose --profile images build dev     # 3fs-dev (upstream dev.dockerfile)
+sudo docker compose --profile build  build builder  # 3fs-builder (+ 3fs-run via runtime profile)
+sudo env BUILD_JOBS=24 docker compose --profile build run --rm builder   # cached build -> build/
+```
+
+- Builds land in `${BUILD_DIR:-build}` inside the repo mount; the caches
+  (`ccache`, `sccache`, `cargo` named volumes) persist across runs. Set
+  `BUILD_DIR=build-out` to build out-of-tree without touching an existing build.
+- The runtime profile (`3fs`) is one privileged container with
+  `network_mode: host`, `memlock: -1`, `nofile: 1048576` — the rlimits that
+  PAM would otherwise gate — running fdbserver + the single-node cluster;
+  the FUSE mount shows on the host under `${DATA_DIR}/mnt` via `rshared`
+  propagation. The host still needs `rxe0` (`setup-rxe.sh`).
+
+```bash
+sudo docker compose --profile run up 3fs   # needs host rxe0; mount at ./data/mnt
+```
 
 ## Compat libs
+
 
 Binaries built in the 22.04 container pin 22.04 sonames (Boost 1.74,
 `libfuse3.so.3`, ICU 70, glog, tcmalloc, libevent 2.1, `libaio.so.1`) that 26.04
