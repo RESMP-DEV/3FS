@@ -1,0 +1,12 @@
+[Unit]
+Description=Soft-RoCE rxe0 link on @NETDEV@ (for 3FS)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sh -c "rdma link show rxe0 >/dev/null 2>&1 || rdma link add rxe0 type rxe netdev @NETDEV@"
+
+[Install]
+WantedBy=multi-user.target
