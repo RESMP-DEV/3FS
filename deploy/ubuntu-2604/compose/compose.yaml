@@ -30,7 +30,7 @@ services:
       CARGO_HOME: /cache/cargo
     working_dir: /ws
     command: >
-      bash -c "git config --global --add safe.directory /ws &&
+      bash -c "git config --global --add safe.directory '*' &&
                if [ -f build/git-state.txt ] && [ ! -s build/git-state.txt ]; then rm -f build/git-state.txt; fi &&
                cmake -S . -B ${BUILD_DIR:-build}
                  -DCMAKE_CXX_COMPILER=clang++-14 -DCMAKE_C_COMPILER=clang-14
