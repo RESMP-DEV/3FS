@@ -62,9 +62,11 @@ services:
         bind:
           propagation: rshared
     environment:
-      3FS_BIN: ${3FS_BIN:-/ws/build/bin}
+      # Override with `docker compose run -e 3FS_BIN=...` if needed; names
+      # starting with a digit can't go through ${} interpolation.
+      3FS_BIN: /ws/build/bin
       3FS_DATA: /data
-      3FS_KEEP_DATA: ${3FS_KEEP_DATA:-0}
+      3FS_KEEP_DATA: "0"
 
 volumes:
   ccache:
