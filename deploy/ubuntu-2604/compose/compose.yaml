@@ -61,6 +61,7 @@ services:
         target: /data
         bind:
           propagation: rshared
+          create_host_path: true
     environment:
       # Override with `docker compose run -e 3FS_BIN=...` if needed; names
       # starting with a digit can't go through ${} interpolation.
