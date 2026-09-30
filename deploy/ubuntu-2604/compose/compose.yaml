@@ -1,0 +1,72 @@
+name: 3fs
+
+services:
+  # Upstream dev image (unmodified): clang-14 toolchain, FDB client, libfuse 3.16.2, Rust.
+  dev:
+    profiles: ["images"]
+    image: 3fs-dev
+    build:
+      context: ../..
+      dockerfile: dockerfile/dev.dockerfile
+
+  # Build 3FS with warm caches. Build dir defaults to `build` inside the repo
+  # mount; set BUILD_DIR to build out-of-tree without touching an existing build.
+  builder:
+    profiles: ["build"]
+    image: 3fs-builder
+    build:
+      context: .
+      dockerfile: Dockerfile.tools
+    volumes:
+      - ${REPO_DIR:-../..}:/ws
+      - ccache:/cache/ccache
+      - sccache:/cache/sccache
+      - cargo:/cache/cargo
+    environment: &buildenv
+      CCACHE_DIR: /cache/ccache
+      SCCACHE_DIR: /cache/sccache
+      RUSTC_WRAPPER: sccache
+      CARGO_INCREMENTAL: "0"
+      CARGO_HOME: /cache/cargo
+    working_dir: /ws
+    command: >
+      bash -c "git config --global --add safe.directory /ws &&
+               if [ -f build/git-state.txt ] && [ ! -s build/git-state.txt ]; then rm -f build/git-state.txt; fi &&
+               cmake -S . -B ${BUILD_DIR:-build}
+                 -DCMAKE_CXX_COMPILER=clang++-14 -DCMAKE_C_COMPILER=clang-14
+                 -DCMAKE_BUILD_TYPE=RelWithDebInfo
+                 -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+                 -DSHUFFLE_METHOD=g++11 &&
+               cmake --build ${BUILD_DIR:-build} -j ${BUILD_JOBS:-24} &&
+               ccache -s && sccache --show-stats"
+
+  # Single-node cluster: fdbserver + mgmtd + meta + storage + FUSE client in one
+  # privileged container on the host network. The FUSE mount appears on the host
+  # under ${DATA_DIR}/mnt through rshared propagation.
+  3fs:
+    profiles: ["run"]
+    image: 3fs-run
+    build:
+      context: .
+      dockerfile: Dockerfile.runtime
+    privileged: true
+    network_mode: host
+    ulimits:
+      memlock: -1
+      nofile: 1048576
+    volumes:
+      - ${REPO_DIR:-../..}:/ws
+      - type: bind
+        source: ${DATA_DIR:-./data}
+        target: /data
+        bind:
+          propagation: rshared
+    environment:
+      3FS_BIN: ${3FS_BIN:-/ws/build/bin}
+      3FS_DATA: /data
+      3FS_KEEP_DATA: ${3FS_KEEP_DATA:-0}
+
+volumes:
+  ccache:
+  sccache:
+  cargo:

@@ -1,0 +1,14 @@
+ARG BASE=3fs-dev
+FROM ${BASE}
+# Runtime for the single-node launcher: FDB server bits + run.sh dependencies.
+# All 22.04 sonames already live in the base dev image, so binaries built by the
+# builder service run here with no compat directory and no LD_LIBRARY_PATH.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      ccache sccache iproute2 gettext-base wget && \
+    wget -q https://github.com/apple/foundationdb/releases/download/7.3.63/foundationdb-server_7.3.63-1_amd64.deb && \
+    dpkg -i foundationdb-server_7.3.63-1_amd64.deb && \
+    rm foundationdb-server_7.3.63-1_amd64.deb && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
