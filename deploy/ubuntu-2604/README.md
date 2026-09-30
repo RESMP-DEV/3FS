@@ -42,8 +42,16 @@ sudo env BUILD_JOBS=24 docker compose --profile build run --rm builder   # cache
   propagation. The host still needs `rxe0` (`setup-rxe.sh`).
 
 ```bash
-sudo docker compose --profile run up 3fs   # needs host rxe0; mount at ./data/mnt
+sudo docker compose --profile run up -d 3fs   # needs host rxe0; mount at ./data/mnt
 ```
+
+Verified 2026-09-30 on the B550: full bring-up in the container, mount
+visible on the host, 1 GiB write + cache-dropped readback with matching
+sha256, ~44k RDMA sends on rxe0. Stop the native cluster first (ports
+12500-12503 collide). Container-side gotchas already handled in the bundle:
+digit-leading `3FS_*` env names are read via `printenv` (bash cannot expand
+them), rxe0 is detected via sysfs (jammy iproute2 rejects bare device names),
+and the data bind auto-creates its source.
 
 ## Compat libs
 
