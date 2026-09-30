@@ -6,7 +6,7 @@ services:
     profiles: ["images"]
     image: 3fs-dev
     build:
-      context: ../..
+      context: ../../..
       dockerfile: dockerfile/dev.dockerfile
 
   # Build 3FS with warm caches. Build dir defaults to `build` inside the repo
@@ -18,7 +18,7 @@ services:
       context: .
       dockerfile: Dockerfile.tools
     volumes:
-      - ${REPO_DIR:-../..}:/ws
+      - ${REPO_DIR:-../../..}:/ws
       - ccache:/cache/ccache
       - sccache:/cache/sccache
       - cargo:/cache/cargo
@@ -55,7 +55,7 @@ services:
       memlock: -1
       nofile: 1048576
     volumes:
-      - ${REPO_DIR:-../..}:/ws
+      - ${REPO_DIR:-../../..}:/ws
       - type: bind
         source: ${DATA_DIR:-./data}
         target: /data
